@@ -17,7 +17,7 @@ Goals:
 
 ## Roadmap
 
-- [ ] Scan for available browsers.
+- [x] Scan for available browsers.
 - [ ] Add Chromium type web heads.
 - [ ] Add FireFox web head (needs profile setup).
 - [ ] Add Epiphany web head (needs desktop file setup).
