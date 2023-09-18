@@ -11,6 +11,13 @@ main (int argc, const char *argv[])
   const std::vector<WebHeadBrowser>  browsers = web_head_find();
   for (const WebHeadBrowser &b : browsers)
     printf ("Browser: type=%d%s\t%-32s version %-16s\t\t(%s)\n", int (b.type), b.snapdir ? " (snap):" : ":    ", b.executable.c_str(), b.version.c_str(), b.identification.c_str());
-
+  if (browsers.size()) {
+    static WebHeadSession wh (__FILE__, "https://github.com/tim-janik/webhead/blob/trunk/examples/hello.cc");
+    printf ("%s:%s: starting web head: %s\n", __FILE__, __func__, browsers[0].executable.c_str());
+    int err = wh.start (browsers[0]);
+    printf ("%s:%s: %s: running=%d: %s\n", __FILE__, __func__, browsers[0].executable.c_str(), wh.running(), strerror (err));
+    while (wh.running())
+      sleep (1);
+  };
   return 0;
 }
