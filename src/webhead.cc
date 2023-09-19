@@ -307,6 +307,49 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
   return pp;
 }
 
+/// Start chromium type browsers
+static WebHeadSession::ProcessP
+start_epiphany (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
+{
+  namespace fs = std::filesystem;
+  namespace bp = boost::process;
+  const std::string exename = fs::path (executable).filename();
+  const std::string pdir = create_webhead_tempdir (executable, appname, snapdir);
+  if (pdir == "") return nullptr;
+  const fs::path applications = fs::path (pdir) / "applications";
+  if (!path_mkdirs (applications)) return nullptr;
+  create_profile_files (pdir, exename, snapdir, url, appname);
+  // epiphany --application-mode needs a desktop file
+  const fs::path desktopfile = applications / (appname + ".desktop");
+  const std::string desktopentry =
+    "[Desktop Entry]\nVersion=1.0\nType=Application\nStartupNotify=true\nTerminal=false\n" +
+    posix_printf ("Exec=epiphany -a %s.desktop\n", appname.c_str()) +
+    posix_printf ("StartupWMClass=%s\n", appname.c_str()) +
+    posix_printf ("Name=%s\n", appname.c_str());
+  write_string (desktopfile, desktopentry);
+  // cp ./tmp/applications/example.desktop /tmp/empty/applications/ && XDG_DATA_DIRS="/tmp/empty/:$XDG_DATA_DIRS"
+  // epiphany -a example.desktop --new-window  https://google.de
+  const std::string logfile = fs::path (pdir) / "WebHead.log";
+  // https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
+  // https://peter.sh/experiments/chromium-command-line-switches/
+  std::vector<std::string> args = {
+    "-a", appname + ".desktop",         // --application-mode avoids normal browser behaviour
+    // "--incognito",
+    "--new-window",
+    url,
+  };
+  // extend $XDG_DATA_DIRS so epiphany can find {$XDG_DATA_DIRS}/applications/appname.desktop
+  bp::environment env = boost::this_process::environment();
+  const char *const XDG_DATA_DIRS = getenv ("XDG_DATA_DIRS"); // native readout, since bp::environment adds junk chars
+  env["XDG_DATA_DIRS"] = !XDG_DATA_DIRS ? pdir : pdir + ":" + XDG_DATA_DIRS;
+  WEBHEAD_DEBUG ("%s: XDG_DATA_DIRS=\"%s\" %s %s\n", __func__, env["XDG_DATA_DIRS"].to_string().c_str(), executable.c_str(), string_join (" ", args).c_str());
+  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  std::error_code ec{};
+  pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, env, ec);
+  errno = ec.value();
+  return pp;
+}
+
 /// Prepare web head session
 WebHeadSession::WebHeadSession (const std::string &url, const std::string &appname) :
   url_ (url), app_ (appname)
@@ -328,23 +371,25 @@ WebHeadSession::start (const WebHeadBrowser &browser)
     case WebHeadType::Chromium:
     case WebHeadType::GoogleChrome:
       process_ = start_chromium (browser.executable, browser.snapdir, url_, app_);
-      if (process_ && process_->child.running())
-        errno = 0;
-      else if (process_) {
-        const int last = errno;
-        std::error_code ec{};
-        process_->child.terminate (ec);
-        process_->child.wait();
-        process_ = nullptr;
-        errno = last ? last : EIO;
-      }
+      break;
+    case WebHeadType::Epiphany:
+      process_ = start_epiphany (browser.executable, browser.snapdir, url_, app_);
       break;
     case WebHeadType::Firefox:
-    case WebHeadType::Epiphany:
     case WebHeadType::Any:
       errno = ENOSYS;
       break;
     }
+  if (process_ && process_->child.running())
+    errno = 0;
+  else if (process_) {
+    const int last = errno ? errno : EINVAL;
+    std::error_code ec{};
+    process_->child.terminate (ec);
+    process_->child.wait();
+    process_ = nullptr;
+    errno = last;
+  }
   return errno;
 }
 
