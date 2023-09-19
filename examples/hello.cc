@@ -8,14 +8,19 @@ using namespace WebHead;
 int
 main (int argc, const char *argv[])
 {
+  // Find a suitable web head
   const std::vector<WebHeadBrowser>  browsers = web_head_find (WebHeadType::Chromium);
   for (const WebHeadBrowser &b : browsers)
     printf ("Browser: type=%d%s\t%-32s version %-16s\t\t(%s)\n", int (b.type), b.snapdir ? " (snap):" : ":    ", b.executable.c_str(), b.version.c_str(), b.identification.c_str());
+  // Run UI, simply picking the first suitable browser
   if (browsers.size()) {
     static WebHeadSession wh ("https://github.com/tim-janik/webhead/blob/trunk/examples/hello.cc", __FILE__);
     printf ("%s:%s: starting web head: %s\n", __FILE__, __func__, browsers[0].executable.c_str());
     int err = wh.start (browsers[0]);
     printf ("%s:%s: %s: running=%d: %s\n", __FILE__, __func__, browsers[0].executable.c_str(), wh.running(), strerror (err));
+    // Kill web head after some time
+    // sleep (5); wh.kill();
+    // Or keep running as long as the web head is running
     while (wh.running())
       sleep (1);
   };
