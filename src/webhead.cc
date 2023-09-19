@@ -191,31 +191,31 @@ create_webhead_tempdir (const std::string &executable, const std::string &appnam
 struct BrowserCheck {
   std::string exename;
   std::string versionpattern;
-  WebHeadType browsertype;
+  BrowserType browsertype;
 };
 static const BrowserCheck web_head_browser_checks[] = {
-  { "firefox",                  "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
-  { "firefox-esr",              "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
-  { "google-chrome",            "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      WebHeadType::GoogleChrome },
+  { "firefox",                  "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       BrowserType::Firefox },
+  { "firefox-esr",              "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       BrowserType::Firefox },
+  { "google-chrome",            "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      BrowserType::GoogleChrome },
   // "google-chrome-stable", "google-chrome-beta", "google-chrome-unstable" have one canonical alias, "google-chrome"
-  { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                WebHeadType::Chromium },
+  { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                BrowserType::Chromium },
   // "chromium-browser", is a wrapper, so cannot be detected as ~/snap/chromium-browser
-  { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     WebHeadType::Epiphany },
+  { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     BrowserType::Epiphany },
 };
 
 /// Find and return a list of browsers in $PATH that can be used as web heads.
-std::vector<WebHeadBrowser>
-web_head_find (WebHeadType type)
+std::vector<BrowserInfo>
+web_head_find (BrowserType type)
 {
   namespace bp = boost::process;
   namespace fs = std::filesystem;
-  std::vector<WebHeadBrowser> browsers;
+  std::vector<BrowserInfo> browsers;
   for (size_t j = 0; j < sizeof (web_head_browser_checks) / sizeof (web_head_browser_checks[0]); j++)
-    if (type == WebHeadType::Any || type == web_head_browser_checks[j].browsertype) {
+    if (type == BrowserType::Any || type == web_head_browser_checks[j].browsertype) {
       const BrowserCheck &check = web_head_browser_checks[j];
       const std::string path = bp::search_path (check.exename).string();
       if (path.empty()) continue;
-      WebHeadBrowser b { .executable = path, .type = check.browsertype };
+      BrowserInfo b { .executable = path, .type = check.browsertype };
       const auto& [ex, out, err] = synchronous_exec (b.executable, { "--version" });
       if (ex != 0 || 0 == out.size()) continue;
       WEBHEAD_DEBUG ("%s: %s:\n%s%sexit_code=%d\n", __func__, b.executable.c_str(), out.c_str(), err.c_str(), ex);
@@ -232,9 +232,9 @@ web_head_find (WebHeadType type)
   return web_head_sort (browsers);
 }
 
-struct WebHeadBrowserLesser {
+struct BrowserInfoLesser {
   bool
-  operator() (const WebHeadBrowser &a, const WebHeadBrowser &b) const
+  operator() (const BrowserInfo &a, const BrowserInfo &b) const
   {
     if (a.type != b.type)
       return a.type < b.type;
@@ -251,16 +251,16 @@ struct WebHeadBrowserLesser {
 };
 
 /// Sort browser list by type, version, etc.
-std::vector<WebHeadBrowser>
-web_head_sort (const std::vector<WebHeadBrowser> &browsers)
+std::vector<BrowserInfo>
+web_head_sort (const std::vector<BrowserInfo> &browsers)
 {
-  std::vector<WebHeadBrowser> browservector = browsers;
-  std::stable_sort (browservector.begin(), browservector.end(), WebHeadBrowserLesser());
+  std::vector<BrowserInfo> browservector = browsers;
+  std::stable_sort (browservector.begin(), browservector.end(), BrowserInfoLesser());
   return browservector;
 }
 
-/// WebHeadSession::Process simply wraps boost::process::child.
-struct WebHeadSession::Process {
+/// Session::Process simply wraps boost::process::child.
+struct Session::Process {
   boost::process::child child = {};
 };
 
@@ -275,7 +275,7 @@ create_profile_files (const std::string &profiledir, const std::string &exename,
 }
 
 /// Start chromium type browsers
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_chromium (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -300,7 +300,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
     "--app=" + url,
   };
   WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
   errno = ec.value();
@@ -308,7 +308,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
 }
 
 /// Start the Epiphany browser
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_epiphany (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -340,7 +340,7 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
   const char *const XDG_DATA_DIRS = getenv ("XDG_DATA_DIRS"); // native readout, since bp::environment adds junk chars
   env["XDG_DATA_DIRS"] = !XDG_DATA_DIRS ? pdir : pdir + ":" + XDG_DATA_DIRS;
   WEBHEAD_DEBUG ("%s: XDG_DATA_DIRS=\"%s\" %s %s\n", __func__, env["XDG_DATA_DIRS"].to_string().c_str(), executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, env, ec);
   errno = ec.value();
@@ -348,7 +348,7 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
 }
 
 /// Start the Firefox browser
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_firefox (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -396,7 +396,7 @@ start_firefox (const std::string &executable, bool snapdir, const std::string &u
   };
   // Start and redirect stdin/stdout/stderr which may be used by the application
   WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   const std::string logfile = fs::path (pdir) / "WebHead.log";
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
@@ -405,7 +405,7 @@ start_firefox (const std::string &executable, bool snapdir, const std::string &u
 }
 
 /// Prepare web head session
-WebHeadSession::WebHeadSession (const std::string &url, const std::string &appname) :
+Session::Session (const std::string &url, const std::string &appname) :
   url_ (url), app_ (appname)
 {
   if (app_.empty()) {
@@ -417,22 +417,22 @@ WebHeadSession::WebHeadSession (const std::string &url, const std::string &appna
 
 /// Start web head with the given `url` in `browser`, returns errno.
 int
-WebHeadSession::start (const WebHeadBrowser &browser)
+Session::start (const BrowserInfo &browser)
 {
   if (process_) { WEBHEAD_DEBUG ("%s: session already started", __func__); return EINVAL; }
   switch (browser.type)
     {
-    case WebHeadType::Chromium:
-    case WebHeadType::GoogleChrome:
+    case BrowserType::Chromium:
+    case BrowserType::GoogleChrome:
       process_ = start_chromium (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Epiphany:
+    case BrowserType::Epiphany:
       process_ = start_epiphany (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Firefox:
+    case BrowserType::Firefox:
       process_ = start_firefox (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Any:
+    case BrowserType::Any:
       errno = ENOSYS;
       break;
     }
@@ -451,14 +451,14 @@ WebHeadSession::start (const WebHeadBrowser &browser)
 
 /// Check if the web head is still running.
 bool
-WebHeadSession::running ()
+Session::running ()
 {
   return process_ && process_->child.running();
 }
 
 /// Kill the web head with a signal if it is still running, returns errno.
 int
-WebHeadSession::kill (int signal)
+Session::kill (int signal)
 {
   if (!running()) return ESRCH;
   const int err = ::kill (process_->child.id(), signal);

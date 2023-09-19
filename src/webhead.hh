@@ -7,7 +7,7 @@
 
 namespace WebHead {
 
-enum class WebHeadType {
+enum class BrowserType {
   Any,
   Chromium,
   Firefox,
@@ -15,29 +15,29 @@ enum class WebHeadType {
   Epiphany,
 };
 
-struct WebHeadBrowser {
+struct BrowserInfo {
   std::string executable;
   std::string identification;
   std::string version;
-  WebHeadType type = WebHeadType::Any;
+  BrowserType type = BrowserType::Any;
   bool snapdir = false;
 };
 
-std::vector<WebHeadBrowser>     web_head_find (WebHeadType type = WebHeadType::Any);
-std::vector<WebHeadBrowser>     web_head_sort (const std::vector<WebHeadBrowser> &browsers);
+std::vector<BrowserInfo>     web_head_find (BrowserType type = BrowserType::Any);
+std::vector<BrowserInfo>     web_head_sort (const std::vector<BrowserInfo> &browsers);
 
-class WebHeadSession {
+class Session {
 public:
-  explicit      WebHeadSession  (const std::string &url, const std::string &appname = "");
-  int           start           (const WebHeadBrowser &browser);
-  bool          running         ();
-  int           kill            (int signal = 1);
+  explicit      Session  (const std::string &url, const std::string &appname = "");
+  int           start    (const BrowserInfo &browser);
+  bool          running  ();
+  int           kill     (int signal = 1);
   struct Process;
   using ProcessP = std::shared_ptr<Process>;
 private:
   std::string    url_, app_;
   ProcessP       process_;
 };
-using WebHeadSessionP = std::shared_ptr<WebHeadSession>;
+using WebHeadSessionP = std::shared_ptr<Session>;
 
 } // WebHead
