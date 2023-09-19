@@ -14,7 +14,7 @@ main (int argc, const char *argv[])
     printf ("%s:%s: Found browser type=%d%s %-30s version %-14s\t\t(%s)\n", __FILE__, __func__, int (b.type), b.snapdir ? "snap:" : ":    ", b.executable.c_str(), b.version.c_str(), b.identification.c_str());
   // Run UI, simply picking the first suitable browser
   if (browsers.size()) {
-    static WebHeadSession wh ("https://github.com/tim-janik/webhead/blob/trunk/examples/hello.cc", __FILE__);
+    static Session wh ("https://github.com/tim-janik/webhead/blob/trunk/examples/hello.cc", __FILE__);
     printf ("%s:%s: starting web head: %s\n", __FILE__, __func__, browsers[0].executable.c_str());
     int err = wh.start (browsers[0]);
     printf ("%s:%s: %s: running=%d: %s\n", __FILE__, __func__, browsers[0].executable.c_str(), wh.running(), strerror (err));

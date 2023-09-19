@@ -26,18 +26,18 @@ struct BrowserInfo {
 std::vector<BrowserInfo>     web_head_find (BrowserType type = BrowserType::Any);
 std::vector<BrowserInfo>     web_head_sort (const std::vector<BrowserInfo> &browsers);
 
-class WebHeadSession {
+class Session {
 public:
-  explicit      WebHeadSession  (const std::string &url, const std::string &appname = "");
-  int           start           (const BrowserInfo &browser);
-  bool          running         ();
-  int           kill            (int signal = 1);
+  explicit      Session  (const std::string &url, const std::string &appname = "");
+  int           start    (const BrowserInfo &browser);
+  bool          running  ();
+  int           kill     (int signal = 1);
   struct Process;
   using ProcessP = std::shared_ptr<Process>;
 private:
   std::string    url_, app_;
   ProcessP       process_;
 };
-using WebHeadSessionP = std::shared_ptr<WebHeadSession>;
+using WebHeadSessionP = std::shared_ptr<Session>;
 
 } // WebHead

@@ -259,8 +259,8 @@ web_head_sort (const std::vector<BrowserInfo> &browsers)
   return browservector;
 }
 
-/// WebHeadSession::Process simply wraps boost::process::child.
-struct WebHeadSession::Process {
+/// Session::Process simply wraps boost::process::child.
+struct Session::Process {
   boost::process::child child = {};
 };
 
@@ -275,7 +275,7 @@ create_profile_files (const std::string &profiledir, const std::string &exename,
 }
 
 /// Start chromium type browsers
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_chromium (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -300,7 +300,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
     "--app=" + url,
   };
   WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
   errno = ec.value();
@@ -308,7 +308,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
 }
 
 /// Start the Epiphany browser
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_epiphany (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -340,7 +340,7 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
   const char *const XDG_DATA_DIRS = getenv ("XDG_DATA_DIRS"); // native readout, since bp::environment adds junk chars
   env["XDG_DATA_DIRS"] = !XDG_DATA_DIRS ? pdir : pdir + ":" + XDG_DATA_DIRS;
   WEBHEAD_DEBUG ("%s: XDG_DATA_DIRS=\"%s\" %s %s\n", __func__, env["XDG_DATA_DIRS"].to_string().c_str(), executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, env, ec);
   errno = ec.value();
@@ -348,7 +348,7 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
 }
 
 /// Start the Firefox browser
-static WebHeadSession::ProcessP
+static Session::ProcessP
 start_firefox (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
   namespace fs = std::filesystem;
@@ -396,7 +396,7 @@ start_firefox (const std::string &executable, bool snapdir, const std::string &u
   };
   // Start and redirect stdin/stdout/stderr which may be used by the application
   WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
-  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  Session::ProcessP pp = std::make_shared<Session::Process>();
   const std::string logfile = fs::path (pdir) / "WebHead.log";
   std::error_code ec{};
   pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
@@ -405,7 +405,7 @@ start_firefox (const std::string &executable, bool snapdir, const std::string &u
 }
 
 /// Prepare web head session
-WebHeadSession::WebHeadSession (const std::string &url, const std::string &appname) :
+Session::Session (const std::string &url, const std::string &appname) :
   url_ (url), app_ (appname)
 {
   if (app_.empty()) {
@@ -417,7 +417,7 @@ WebHeadSession::WebHeadSession (const std::string &url, const std::string &appna
 
 /// Start web head with the given `url` in `browser`, returns errno.
 int
-WebHeadSession::start (const BrowserInfo &browser)
+Session::start (const BrowserInfo &browser)
 {
   if (process_) { WEBHEAD_DEBUG ("%s: session already started", __func__); return EINVAL; }
   switch (browser.type)
@@ -451,14 +451,14 @@ WebHeadSession::start (const BrowserInfo &browser)
 
 /// Check if the web head is still running.
 bool
-WebHeadSession::running ()
+Session::running ()
 {
   return process_ && process_->child.running();
 }
 
 /// Kill the web head with a signal if it is still running, returns errno.
 int
-WebHeadSession::kill (int signal)
+Session::kill (int signal)
 {
   if (!running()) return ESRCH;
   const int err = ::kill (process_->child.id(), signal);
