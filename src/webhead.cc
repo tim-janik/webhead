@@ -347,6 +347,63 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
   return pp;
 }
 
+/// Start the Firefox browser
+static WebHeadSession::ProcessP
+start_firefox (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
+{
+  namespace fs = std::filesystem;
+  namespace bp = boost::process;
+  // Always start with a fresh profile
+  const std::string exename = fs::path (executable).filename();
+  const std::string pdir = create_webhead_tempdir (executable, appname, snapdir);
+  if (pdir == "") return nullptr;
+  const fs::path chrome = fs::path (pdir) / "chrome";
+  if (!path_mkdirs (chrome)) return nullptr;
+  create_profile_files (pdir, exename, snapdir, url, appname);
+  // Suppress some browser behaviours and allow userChrome.css
+  const std::string prefs_content =
+    "user_pref(\"app.normandy.first_run\", false);\n"
+    "user_pref(\"doh-rollout.doneFirstRun\", true);\n"
+    "user_pref(\"browser.cache.disk.enable\", false);\n"
+    "user_pref(\"browser.shell.checkDefaultBrowser\", false);\n"
+    "user_pref(\"browser.discovery.enabled\", false);\n"
+    "user_pref(\"datareporting.healthreport.uploadEnabled\", false);\n"
+    "user_pref(\"layout.css.has-selector.enabled\", true);\n"
+    "user_pref(\"toolkit.legacyUserProfileCustomizations.stylesheets\", true);\n"
+    "user_pref(\"toolkit.telemetry.reportingpolicy.firstRun\", false);\n";
+  write_string (fs::path (pdir) / "prefs.js", prefs_content);
+  // Remove the most useless firefox chrome elements to serve as web head
+  // Debug: DevTools > … > Settings [F1] > [x]EnableRemoteDebugging [x]EnableBrowserChromeToolbox // Browser: Ctrl+Shift+Alt+I
+  const std::string userchrome_content =
+    // Hide buttons useless for web heads
+    "toolbar#nav-bar toolbarbutton#unified-extensions-button, toolbar#nav-bar toolbarbutton#save-to-pocket-button { display: none; }\n"
+    // Hide main menu items
+    // "toolbaritem#menubar-items { display: none; }\n"
+    // Hide useless browser notifications about telemtry
+    "#navigator-toolbox vbox.notificationbox-stack.global-notificationbox { display: none; }\n"
+    // Hide single tab toolbar, tabs stay usable with Ctrl+T Ctrl+W
+    "toolbar#TabsToolbar:has(tab:only-of-type) { visibility: collapse; }\n"
+    // Hide Bookmarks Bar
+    "toolbar#PersonalToolbar { display: none; }\n";
+  write_string (chrome / "userChrome.css", userchrome_content);
+  // https://wiki.mozilla.org/Firefox/CommandLineOptions
+  std::vector<std::string> args = {
+    "--class=" + appname,
+    "--profile", pdir,          // enforce new seesion on each start
+    "--no-remote",
+    // "--kiosk",
+    "--private-window", url,
+  };
+  // Start and redirect stdin/stdout/stderr which may be used by the application
+  WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
+  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  const std::string logfile = fs::path (pdir) / "WebHead.log";
+  std::error_code ec{};
+  pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
+  errno = ec.value();
+  return pp;
+}
+
 /// Prepare web head session
 WebHeadSession::WebHeadSession (const std::string &url, const std::string &appname) :
   url_ (url), app_ (appname)
@@ -373,6 +430,8 @@ WebHeadSession::start (const WebHeadBrowser &browser)
       process_ = start_epiphany (browser.executable, browser.snapdir, url_, app_);
       break;
     case WebHeadType::Firefox:
+      process_ = start_firefox (browser.executable, browser.snapdir, url_, app_);
+      break;
     case WebHeadType::Any:
       errno = ENOSYS;
       break;
