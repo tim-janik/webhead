@@ -232,4 +232,103 @@ web_head_find (WebHeadType type)
   return browsers;
 }
 
+/// WebHeadSession::Process simply wraps boost::process::child.
+struct WebHeadSession::Process {
+  boost::process::child child = {};
+};
+
+/// Start chromium type browsers
+static WebHeadSession::ProcessP
+start_chromium (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
+{
+  namespace fs = std::filesystem;
+  namespace bp = boost::process;
+  const std::string exename = fs::path (executable).filename();
+  const std::string pdir = create_webhead_tempdir (executable, appname, snapdir);
+  if (pdir == "") return nullptr;
+  const auto s =
+    posix_printf ("WebHead directory to host temporary profile of %s - %s web head\n", appname.c_str(), exename.c_str());
+  write_string (fs::path (pdir) / "WebHead.txt", s);
+  const std::string logfile = fs::path (pdir) / "WebHead.log";
+  // https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
+  // https://peter.sh/experiments/chromium-command-line-switches/
+  std::vector<std::string> args = {
+    "--user-data-dir=" + pdir,          // Avoids "Opening in existing browser session"
+    "--incognito",
+    "--no-first-run",                   // Avoid popup for empty profile
+    "--no-experiments",
+    "--no-default-browser-check",
+    "--disable-extensions",
+    "--disable-sync",
+    "--bwsi",
+    "--new-window",
+    "--app=" + url,
+  };
+  WEBHEAD_DEBUG ("%s: %s %s\n", __func__, executable.c_str(), string_join (" ", args).c_str());
+  WebHeadSession::ProcessP pp = std::make_shared<WebHeadSession::Process>();
+  std::error_code ec{};
+  pp->child = bp::child (executable, bp::args (args), (bp::std_err & bp::std_out) > logfile, bp::std_in < bp::null, ec);
+  errno = ec.value();
+  return pp;
+}
+
+/// Prepare web head session
+WebHeadSession::WebHeadSession (const std::string &url, const std::string &appname) :
+  url_ (url), app_ (appname)
+{
+  if (app_.empty()) {
+    char buf[4096] = { 0, };
+    ssize_t n = ::readlink ("/proc/self/exe", buf, sizeof (buf) - 1);
+    app_ = n > 0 ? buf : "/proc/self/";
+  }
+}
+
+/// Start web head with the given `url` in `browser`, returns errno.
+int
+WebHeadSession::start (const WebHeadBrowser &browser)
+{
+  if (process_) { WEBHEAD_DEBUG ("%s: session already started", __func__); return EINVAL; }
+  switch (browser.type)
+    {
+    case WebHeadType::Chromium:
+    case WebHeadType::GoogleChrome:
+      process_ = start_chromium (browser.executable, browser.snapdir, url_, app_);
+      if (process_ && process_->child.running())
+        errno = 0;
+      else if (process_) {
+        const int last = errno;
+        std::error_code ec{};
+        process_->child.terminate (ec);
+        process_->child.wait();
+        process_ = nullptr;
+        errno = last ? last : EIO;
+      }
+      break;
+    case WebHeadType::Firefox:
+    case WebHeadType::Epiphany:
+    case WebHeadType::Any:
+      errno = ENOSYS;
+      break;
+    }
+  return errno;
+}
+
+/// Check if the web head is still running.
+bool
+WebHeadSession::running ()
+{
+  return process_ && process_->child.running();
+}
+
+/// Kill the web head with a signal if it is still running, returns errno.
+int
+WebHeadSession::kill (int signal)
+{
+  if (!running()) return ESRCH;
+  const int err = ::kill (process_->child.id(), signal);
+  const int last_errno = err < 0 && !errno ? EINVAL : errno;
+  WEBHEAD_DEBUG ("%s: killed, signal=%d, pid=%d: %s\n", __func__, signal, process_->child.id(), strerror (errno));
+  return last_errno;
+}
+
 } // WebHead
