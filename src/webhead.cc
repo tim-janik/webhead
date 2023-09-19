@@ -136,6 +136,57 @@ timestamp_realtime ()
   return now.tv_sec * 1000000ULL + now.tv_usec;
 }
 
+/// Create new temporary dir and purge old dirs of the same kind.
+static std::string
+create_hostpid_subdir (const std::string &parentdir, bool clean_stale_siblings)
+{
+  namespace fs = std::filesystem;
+  // determine dirname for current and previous sessions
+  const std::string prefix = posix_printf ("%s-%08lx-", host_name(), gethostid());
+  if (clean_stale_siblings) {
+    std::vector<std::string> others;
+    std::error_code ec{};
+    for (const auto &entry : fs::directory_iterator (parentdir, ec)) {
+      // find previous session with stale PID in directory name
+      const std::string sibling = entry.path().filename();
+      if (sibling.compare (0, prefix.size(), prefix) != 0) continue;
+      char *endptr = nullptr;
+      const size_t sibling_pid = strtoul (sibling.c_str() + prefix.size(), &endptr, 10);
+      if (sibling_pid <= 0 || (endptr && *endptr)) continue;
+      if (kill (sibling_pid, 0) == -1 && errno == ESRCH) {
+        WEBHEAD_DEBUG ("%s: cleaning stale temp dir: %s\n", __func__, entry.path().c_str());
+        std::error_code ec;
+        std::filesystem::remove_all (entry.path(), ec);
+      }
+    }
+  }
+  // create directory with PID of the current session
+  const std::string host_dir = fs::path (parentdir) / (prefix + posix_printf ("%u", getpid()));
+  if (path_exists (host_dir)) {
+    errno = EEXIST;
+    return "";
+  }
+  return path_mkdirs (host_dir) ? host_dir : "";
+}
+
+// Create suitable temporary WebHead directory, take snap R/W limitations into account.
+static std::string
+create_webhead_tempdir (const std::string &executable, const std::string &appname, bool forsnap)
+{
+  namespace fs = std::filesystem;
+  std::string basedir, exename = fs::path (executable).filename();
+  // Many snap apps can only write under ~/snap/<self>/current/
+  if (forsnap)
+    basedir = fs::path (home_dir()) / "snap" / exename / "current" / "WebHead";
+  else
+    basedir = fs::path (cache_home()) / "WebHead";
+  const std::string runtimedir = create_hostpid_subdir (basedir, true); // ~/.../WebHead/hostname-aabbccdd-123
+  std::string subdir = forsnap ? "" : exename + "-";
+  subdir += posix_printf ("%llu", timestamp_realtime());
+  const fs::path tempdir = fs::path (runtimedir) / subdir;
+  return !path_exists (tempdir) && path_mkdirs (tempdir) ? tempdir : "";
+}
+
 // == detect existing browsers ==
 struct BrowserCheck {
   std::string exename;
