@@ -307,7 +307,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
   return pp;
 }
 
-/// Start chromium type browsers
+/// Start the Epiphany browser
 static WebHeadSession::ProcessP
 start_epiphany (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
 {
