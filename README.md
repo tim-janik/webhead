@@ -19,8 +19,8 @@ Goals:
 
 - [x] Scan for available browsers.
 - [x] Add Chromium type web heads.
-- [ ] Add FireFox web head (needs profile setup).
-- [ ] Add Epiphany web head (needs desktop file setup).
+- [x] Add Firefox web head (needs profile setup).
+- [x] Add Epiphany web head (needs desktop file setup).
 - [ ] Support a user provided Electron as web head.
 - [ ] Support a user provided NW.js as web head.
 - [ ] Support size optimized WebKit based renderer.
