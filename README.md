@@ -22,6 +22,8 @@ Goals:
 - [ ] Add FireFox web head (needs profile setup).
 - [ ] Add Epiphany web head (needs desktop file setup).
 - [ ] Support a user provided Electron as web head.
+- [ ] Support a user provided NW.js as web head.
+- [ ] Support size optimized WebKit based renderer.
 - [ ] Example: Demonstrate JSONIPC setup.
 - [ ] Example: Add pandoc based mdview example.
 - [ ] Security: Add example that allows single-connection only.
