@@ -1,6 +1,9 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "webhead.hh"
 #include <stdlib.h>
+#include <locale.h>
+#include <stdarg.h>
+#include <sys/time.h>
 #include <boost/process.hpp>
 #include <filesystem>
 #include <regex>
@@ -8,6 +11,8 @@
 #define WEBHEAD_DEBUG(...)      do { if (0) dprintf (2, __VA_ARGS__); } while (0)
 
 namespace WebHead {
+
+static std::string posix_printf (const char*, ...) __attribute__ ((__format__ (__printf__, 1, 2)));
 
 /// Join a vector of strings.
 static std::string
@@ -17,6 +22,34 @@ string_join (const std::string &junctor, const std::vector<std::string> &strvec)
   for (size_t i = 1; i < strvec.size(); i++)
     s += junctor + strvec[i];
   return s;
+}
+
+/// Create std::string from printf() format style in the Posix C locale.
+static std::string
+posix_printf (const char *format, ...)
+{
+  va_list args;
+  static locale_t posix_c_locale = newlocale (LC_ALL_MASK, "C", NULL);
+  locale_t saved_locale = uselocale (posix_c_locale);
+  va_start (args, format);
+  char buffer[8192] = { 0, };
+  vsnprintf (buffer, sizeof (buffer) - 1, format, args);
+  buffer[sizeof (buffer)-1] = 0;
+  va_end (args);
+  uselocale (saved_locale);
+  return buffer;
+}
+
+/// Yield gethostname() as std::string
+static const char*
+host_name()
+{
+  static char buffer[256] = { 0, };
+  if (!buffer[0]) {
+    gethostname (buffer, sizeof (buffer));
+    buffer[sizeof (buffer)-1] = 0;
+  }
+  return buffer;
 }
 
 /// Run program and capture output.
@@ -58,11 +91,49 @@ path_exists (const std::filesystem::path &path)
   return std::filesystem::exists (path, ec) && !ec;
 }
 
+/// Create directory, including parents.
+static bool
+path_mkdirs (const std::filesystem::path &path)
+{
+  std::error_code ec{};
+  std::filesystem::create_directories (path, ec);
+  return path_exists (path);
+}
+
+/// Create a file from a string.
+static void
+write_string (const std::string &filename, const std::string &contents)
+{
+  std::ofstream ofile (filename);
+  ofile << contents;
+  ofile.close();
+}
+
 /// Path of the current users home directory
 static std::string
 home_dir()
 {
   return getenv ("HOME");
+}
+
+/// Get the $XDG_CACHE_HOME directory, see: https://specifications.freedesktop.org/basedir-spec/latest
+static std::string
+cache_home ()
+{
+  namespace fs = std::filesystem;
+  const char *var = getenv ("XDG_CACHE_HOME");
+  if (var && fs::path (var).is_absolute())
+    return var;
+  return fs::path (home_dir()) / ".cache";
+}
+
+/// Return the current time as uint64 in µseconds.
+static long long unsigned
+timestamp_realtime ()
+{
+  struct timeval now = { 0, 0 };
+  gettimeofday (&now, NULL);
+  return now.tv_sec * 1000000ULL + now.tv_usec;
 }
 
 // == detect existing browsers ==
