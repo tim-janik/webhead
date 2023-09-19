@@ -264,6 +264,16 @@ struct WebHeadSession::Process {
   boost::process::child child = {};
 };
 
+/// Write generic files to browser profile
+static void
+create_profile_files (const std::string &profiledir, const std::string &exename, bool snapdir, const std::string &url, const std::string appname)
+{
+  namespace fs = std::filesystem;
+  const auto s =
+    posix_printf ("WebHead directory to host temporary profile:\n\nApplication=%s\nWebHead=%s\n", appname.c_str(), exename.c_str());
+  write_string (fs::path (profiledir) / "WebHead.txt", s);
+}
+
 /// Start chromium type browsers
 static WebHeadSession::ProcessP
 start_chromium (const std::string &executable, bool snapdir, const std::string &url, const std::string appname)
@@ -273,9 +283,7 @@ start_chromium (const std::string &executable, bool snapdir, const std::string &
   const std::string exename = fs::path (executable).filename();
   const std::string pdir = create_webhead_tempdir (executable, appname, snapdir);
   if (pdir == "") return nullptr;
-  const auto s =
-    posix_printf ("WebHead directory to host temporary profile of %s - %s web head\n", appname.c_str(), exename.c_str());
-  write_string (fs::path (pdir) / "WebHead.txt", s);
+  create_profile_files (pdir, exename, snapdir, url, appname);
   const std::string logfile = fs::path (pdir) / "WebHead.log";
   // https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
   // https://peter.sh/experiments/chromium-command-line-switches/
