@@ -327,11 +327,8 @@ start_epiphany (const std::string &executable, bool snapdir, const std::string &
     posix_printf ("StartupWMClass=%s\n", appname.c_str()) +
     posix_printf ("Name=%s\n", appname.c_str());
   write_string (desktopfile, desktopentry);
-  // cp ./tmp/applications/example.desktop /tmp/empty/applications/ && XDG_DATA_DIRS="/tmp/empty/:$XDG_DATA_DIRS"
-  // epiphany -a example.desktop --new-window  https://google.de
   const std::string logfile = fs::path (pdir) / "WebHead.log";
-  // https://www.chromium.org/developers/how-tos/run-chromium-with-flags/
-  // https://peter.sh/experiments/chromium-command-line-switches/
+  // https://manpages.debian.org/unstable/epiphany-browser/epiphany.1.en.html
   std::vector<std::string> args = {
     "-a", appname + ".desktop",         // --application-mode avoids normal browser behaviour
     // "--incognito",
