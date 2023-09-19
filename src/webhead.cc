@@ -191,27 +191,27 @@ create_webhead_tempdir (const std::string &executable, const std::string &appnam
 struct BrowserCheck {
   std::string exename;
   std::string versionpattern;
-  WebHeadType browsertype;
+  BrowserType browsertype;
 };
 static const BrowserCheck web_head_browser_checks[] = {
-  { "firefox",                  "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
-  { "firefox-esr",              "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
-  { "google-chrome",            "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      WebHeadType::GoogleChrome },
+  { "firefox",                  "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       BrowserType::Firefox },
+  { "firefox-esr",              "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       BrowserType::Firefox },
+  { "google-chrome",            "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      BrowserType::GoogleChrome },
   // "google-chrome-stable", "google-chrome-beta", "google-chrome-unstable" have one canonical alias, "google-chrome"
-  { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                WebHeadType::Chromium },
+  { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                BrowserType::Chromium },
   // "chromium-browser", is a wrapper, so cannot be detected as ~/snap/chromium-browser
-  { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     WebHeadType::Epiphany },
+  { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     BrowserType::Epiphany },
 };
 
 /// Find and return a list of browsers in $PATH that can be used as web heads.
 std::vector<WebHeadBrowser>
-web_head_find (WebHeadType type)
+web_head_find (BrowserType type)
 {
   namespace bp = boost::process;
   namespace fs = std::filesystem;
   std::vector<WebHeadBrowser> browsers;
   for (size_t j = 0; j < sizeof (web_head_browser_checks) / sizeof (web_head_browser_checks[0]); j++)
-    if (type == WebHeadType::Any || type == web_head_browser_checks[j].browsertype) {
+    if (type == BrowserType::Any || type == web_head_browser_checks[j].browsertype) {
       const BrowserCheck &check = web_head_browser_checks[j];
       const std::string path = bp::search_path (check.exename).string();
       if (path.empty()) continue;
@@ -422,17 +422,17 @@ WebHeadSession::start (const WebHeadBrowser &browser)
   if (process_) { WEBHEAD_DEBUG ("%s: session already started", __func__); return EINVAL; }
   switch (browser.type)
     {
-    case WebHeadType::Chromium:
-    case WebHeadType::GoogleChrome:
+    case BrowserType::Chromium:
+    case BrowserType::GoogleChrome:
       process_ = start_chromium (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Epiphany:
+    case BrowserType::Epiphany:
       process_ = start_epiphany (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Firefox:
+    case BrowserType::Firefox:
       process_ = start_firefox (browser.executable, browser.snapdir, url_, app_);
       break;
-    case WebHeadType::Any:
+    case BrowserType::Any:
       errno = ENOSYS;
       break;
     }

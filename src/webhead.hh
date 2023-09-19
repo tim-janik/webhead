@@ -7,7 +7,7 @@
 
 namespace WebHead {
 
-enum class WebHeadType {
+enum class BrowserType {
   Any,
   Chromium,
   Firefox,
@@ -19,11 +19,11 @@ struct WebHeadBrowser {
   std::string executable;
   std::string identification;
   std::string version;
-  WebHeadType type = WebHeadType::Any;
+  BrowserType type = BrowserType::Any;
   bool snapdir = false;
 };
 
-std::vector<WebHeadBrowser>     web_head_find (WebHeadType type = WebHeadType::Any);
+std::vector<WebHeadBrowser>     web_head_find (BrowserType type = BrowserType::Any);
 std::vector<WebHeadBrowser>     web_head_sort (const std::vector<WebHeadBrowser> &browsers);
 
 class WebHeadSession {
