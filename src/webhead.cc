@@ -197,9 +197,9 @@ static const BrowserCheck web_head_browser_checks[] = {
   { "firefox",                  "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
   { "firefox-esr",              "(Mozilla\\s*)(Firefox\\s*)([0-9]+[-0-9.a-z+]*).*",       WebHeadType::Firefox },
   { "google-chrome",            "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      WebHeadType::GoogleChrome },
-  { "google-chrome-stable",     "(Google\\s*)(Chrome\\s\\s*)([0-9]+[-0-9.a-z+]*).*",      WebHeadType::GoogleChrome },
-  { "chromium-browser",         "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                WebHeadType::Chromium },
+  // "google-chrome-stable", "google-chrome-beta", "google-chrome-unstable" have one canonical alias, "google-chrome"
   { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                WebHeadType::Chromium },
+  // "chromium-browser", is a wrapper, so cannot be detected as ~/snap/chromium-browser
   { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     WebHeadType::Epiphany },
 };
 
@@ -223,7 +223,7 @@ web_head_find (WebHeadType type)
       if (groups.size()) {
         b.identification = groups[0];
         b.version = groups[groups.size() - 1];
-        // check for `~/snap/browser/` *after* --version test, so a snap dir has already been created
+        // check for `~/snap/browser/` *after* --version test, so a ~/snap/<self>/current/ dir has already been created
         if (path_exists (fs::path (home_dir()) / "snap" / check.exename))
           b.snapdir = true;
         browsers.push_back (b);
