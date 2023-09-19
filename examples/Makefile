@@ -16,6 +16,7 @@ endif
 
 hello: hello.o
 	$(CXX) $^ -o $@ -lboost_system -lboost_filesystem
+hello.o: ../src/webhead.cc ../src/webhead.hh
 
 clean:
 	rm -f hello *.o */*.o
