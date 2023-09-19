@@ -204,18 +204,18 @@ static const BrowserCheck web_head_browser_checks[] = {
 };
 
 /// Find and return a list of browsers in $PATH that can be used as web heads.
-std::vector<WebHeadBrowser>
+std::vector<BrowserInfo>
 web_head_find (BrowserType type)
 {
   namespace bp = boost::process;
   namespace fs = std::filesystem;
-  std::vector<WebHeadBrowser> browsers;
+  std::vector<BrowserInfo> browsers;
   for (size_t j = 0; j < sizeof (web_head_browser_checks) / sizeof (web_head_browser_checks[0]); j++)
     if (type == BrowserType::Any || type == web_head_browser_checks[j].browsertype) {
       const BrowserCheck &check = web_head_browser_checks[j];
       const std::string path = bp::search_path (check.exename).string();
       if (path.empty()) continue;
-      WebHeadBrowser b { .executable = path, .type = check.browsertype };
+      BrowserInfo b { .executable = path, .type = check.browsertype };
       const auto& [ex, out, err] = synchronous_exec (b.executable, { "--version" });
       if (ex != 0 || 0 == out.size()) continue;
       WEBHEAD_DEBUG ("%s: %s:\n%s%sexit_code=%d\n", __func__, b.executable.c_str(), out.c_str(), err.c_str(), ex);
@@ -232,9 +232,9 @@ web_head_find (BrowserType type)
   return web_head_sort (browsers);
 }
 
-struct WebHeadBrowserLesser {
+struct BrowserInfoLesser {
   bool
-  operator() (const WebHeadBrowser &a, const WebHeadBrowser &b) const
+  operator() (const BrowserInfo &a, const BrowserInfo &b) const
   {
     if (a.type != b.type)
       return a.type < b.type;
@@ -251,11 +251,11 @@ struct WebHeadBrowserLesser {
 };
 
 /// Sort browser list by type, version, etc.
-std::vector<WebHeadBrowser>
-web_head_sort (const std::vector<WebHeadBrowser> &browsers)
+std::vector<BrowserInfo>
+web_head_sort (const std::vector<BrowserInfo> &browsers)
 {
-  std::vector<WebHeadBrowser> browservector = browsers;
-  std::stable_sort (browservector.begin(), browservector.end(), WebHeadBrowserLesser());
+  std::vector<BrowserInfo> browservector = browsers;
+  std::stable_sort (browservector.begin(), browservector.end(), BrowserInfoLesser());
   return browservector;
 }
 
@@ -417,7 +417,7 @@ WebHeadSession::WebHeadSession (const std::string &url, const std::string &appna
 
 /// Start web head with the given `url` in `browser`, returns errno.
 int
-WebHeadSession::start (const WebHeadBrowser &browser)
+WebHeadSession::start (const BrowserInfo &browser)
 {
   if (process_) { WEBHEAD_DEBUG ("%s: session already started", __func__); return EINVAL; }
   switch (browser.type)
