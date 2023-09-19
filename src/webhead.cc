@@ -229,7 +229,34 @@ web_head_find (WebHeadType type)
         browsers.push_back (b);
       }
     }
-  return browsers;
+  return web_head_sort (browsers);
+}
+
+struct WebHeadBrowserLesser {
+  bool
+  operator() (const WebHeadBrowser &a, const WebHeadBrowser &b) const
+  {
+    if (a.type != b.type)
+      return a.type < b.type;
+    if (a.version != b.version) // give precedence to higher versions
+      return strverscmp (a.version.c_str(), b.version.c_str()) > 0;
+    if (a.identification != b.identification)
+      return strcmp (a.identification.c_str(), b.identification.c_str()) < 0;
+    if (a.snapdir != b.snapdir)
+      return a.snapdir < b.snapdir;
+    if (a.executable != b.executable)
+      return a.executable < b.executable;
+    return false;
+  }
+};
+
+/// Sort browser list by type, version, etc.
+std::vector<WebHeadBrowser>
+web_head_sort (const std::vector<WebHeadBrowser> &browsers)
+{
+  std::vector<WebHeadBrowser> browservector = browsers;
+  std::stable_sort (browservector.begin(), browservector.end(), WebHeadBrowserLesser());
+  return browservector;
 }
 
 /// WebHeadSession::Process simply wraps boost::process::child.
