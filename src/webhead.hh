@@ -24,6 +24,7 @@ struct WebHeadBrowser {
 };
 
 std::vector<WebHeadBrowser>     web_head_find (WebHeadType type = WebHeadType::Any);
+std::vector<WebHeadBrowser>     web_head_sort (const std::vector<WebHeadBrowser> &browsers);
 
 class WebHeadSession {
 public:
