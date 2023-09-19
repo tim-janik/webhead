@@ -2,7 +2,7 @@
 
 all:
 
-CXXFLAGS ?= -g -Og
+CXXFLAGS ?= -g -Og -Wdeprecated -Werror=format-security -Wredundant-decls -Wpointer-arith -Wmissing-declarations -Werror=return-type -Wno-tautological-compare -Wno-constant-logical-operand -Woverloaded-virtual -Wsign-promo
 
 ifeq (default,$(origin CXX))
   ifneq (,$(shell which clang++))
