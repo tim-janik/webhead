@@ -60,11 +60,14 @@ synchronous_exec (const std::string &path, const std::vector<std::string> &args)
   // bp::ipstream pout, perr;
   std::future<std::string> pout, perr;
   boost::asio::io_context ioc;
-  bp::child cproc (path, bp::args (args), bp::std_out > pout, bp::std_err > perr, ioc);
-  WEBHEAD_DEBUG ("%s: %s %s\n", __func__, path.c_str(), string_join (" ", args).c_str());
+  std::error_code ec{};
+  bp::child cproc (path, bp::args (args), bp::std_out > pout, bp::std_err > perr, ioc, ec);
+  WEBHEAD_DEBUG ("%s: %s %s: %s\n", __func__, path.c_str(), string_join (" ", args).c_str(), strerror (ec.value()));
+  if (ec.value())
+    return { ec.value(), "", "" };
   ioc.run();
   cproc.wait();
-  const int exit_code = cproc.exit_code();
+  const int exit_code = ec.value() ? ec.value() : cproc.exit_code();
   return { exit_code, pout.get(), perr.get() };
 }
 
