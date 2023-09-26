@@ -213,7 +213,8 @@ web_head_find (BrowserType type)
   for (size_t j = 0; j < sizeof (web_head_browser_checks) / sizeof (web_head_browser_checks[0]); j++)
     if (type == BrowserType::Any || type == web_head_browser_checks[j].browsertype) {
       const BrowserCheck &check = web_head_browser_checks[j];
-      const std::string path = bp::search_path (check.exename).string();
+      boost::filesystem::path exename = check.exename;
+      const std::string path = exename.is_absolute() ? exename.string() : bp::search_path (check.exename).string();
       if (path.empty()) continue;
       BrowserInfo b { .executable = path, .type = check.browsertype };
       const auto& [ex, out, err] = synchronous_exec (b.executable, { "--version" });
