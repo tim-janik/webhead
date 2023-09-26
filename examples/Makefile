@@ -3,6 +3,7 @@
 all:
 
 CXXFLAGS ?= -g -Og -Wdeprecated -Werror=format-security -Wredundant-decls -Wpointer-arith -Wmissing-declarations -Werror=return-type -Wno-tautological-compare -Wno-constant-logical-operand -Woverloaded-virtual -Wsign-promo
+CCACHE   ?= $(if $(CCACHE_DIR), ccache)
 
 ifeq (default,$(origin CXX))
   ifneq (,$(shell which clang++))
@@ -12,10 +13,10 @@ ifeq (default,$(origin CXX))
 endif
 
 %.o: %.cc
-	$(CXX) -std=gnu++17 -Wall $(CXXFLAGS) -c $< -o $@
+	$(CCACHE) $(CXX) -std=gnu++17 -Wall $(CXXFLAGS) -c $< -o $@
 
 hello: hello.o
-	$(CXX) $^ -o $@ -lboost_system -lboost_filesystem
+	$(CCACHE) $(CXX) $^ -o $@ -lboost_system -lboost_filesystem
 hello.o: ../src/webhead.cc ../src/webhead.hh
 
 clean:
