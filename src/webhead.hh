@@ -10,9 +10,9 @@ namespace WebHead {
 enum class BrowserType {
   Any,
   Chromium,
-  Firefox,
   GoogleChrome,
   Epiphany,
+  Firefox, // FF lacks a real application mode
 };
 
 struct BrowserInfo {
