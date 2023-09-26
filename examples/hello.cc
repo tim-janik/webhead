@@ -9,7 +9,11 @@ int
 main (int argc, const char *argv[])
 {
   // Find a suitable web head
-  const std::vector<BrowserInfo>  browsers = web_head_find (BrowserType::Chromium);
+  const std::vector<BrowserInfo>  browsers = web_head_find ();
+  if (browsers.empty()) {
+    dprintf (2, "%s:%s: Failed to find any usable web browser in $PATH\n", __FILE__, __func__);
+    return 2;
+  }
   for (const BrowserInfo &b : browsers)
     printf ("%s:%s: Found browser type=%d%s %-30s version %-14s\t\t(%s)\n", __FILE__, __func__, int (b.type), b.snapdir ? "snap:" : ":    ", b.executable.c_str(), b.version.c_str(), b.identification.c_str());
   // Run UI, simply picking the first suitable browser
