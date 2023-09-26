@@ -200,7 +200,10 @@ static const BrowserCheck web_head_browser_checks[] = {
   // "google-chrome-stable", "google-chrome-beta", "google-chrome-unstable" have one canonical alias, "google-chrome"
   { "chromium",                 "(Chromium\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                BrowserType::Chromium },
   // "chromium-browser", is a wrapper, so cannot be detected as ~/snap/chromium-browser
+  // find epiphany-browser_*.deb
   { "epiphany-browser",         "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     BrowserType::Epiphany },
+  // find /snap/bin/epiphany on Ubuntu
+  { "/snap/bin/epiphany",       "(Web\\s\\s*)([0-9]+[-0-9.a-z+]*).*",                     BrowserType::Epiphany },
 };
 
 /// Find and return a list of browsers in $PATH that can be used as web heads.
